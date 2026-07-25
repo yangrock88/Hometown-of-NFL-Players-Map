@@ -20,24 +20,45 @@ _WORD_NUM = {"one": 1, "two": 2, "three": 3, "four": 4, "five": 5,
 _MULT = {"thousand": 1e3, "million": 1e6, "billion": 1e9}
 
 
+# A single contract's total value never realistically exceeds ~$0.5B.
+_MAX_CONTRACT = 750_000_000
+
+
 def _money(text):
     m = re.search(r"\$\s?([\d,.]+)\s*(thousand|million|billion)?", text, re.I)
     if not m:
         return None
     num = float(m.group(1).replace(",", ""))
     unit = (m.group(2) or "").lower()
-    if unit:
-        return num * _MULT[unit]
-    return num if num >= 1000 else None  # bare small numbers are ambiguous
+    # OTC occasionally writes full figures with a bogus unit, e.g.
+    # "$1,337,500 million". If the number is already a full dollar amount
+    # (>= 1000), it's absolute -- ignore any trailing unit word.
+    val = num * _MULT[unit] if (unit and num < 1000) else num
+    if val < 1000 or val > _MAX_CONTRACT:
+        return None
+    return val
 
 
 def _years(summary):
-    m = re.search(r"\b(\d+|one|two|three|four|five|six|seven|eight|nine|ten)\s+year",
+    # allow "four year", "four-year", and OTC typos like "fiver year"
+    m = re.search(r"\b(\d+|one|two|three|four|five|six|seven|eight|nine|ten)[a-z]?[\s-]+year",
                   summary, re.I)
     if not m:
         return None
     tok = m.group(1).lower()
     return int(tok) if tok.isdigit() else _WORD_NUM.get(tok)
+
+
+def derive(summary):
+    """Compute {years, value, apy} from a stored contract summary sentence.
+    Kept separate from scraping so parser fixes apply to cached text."""
+    value = _money(summary or "")
+    years = _years(summary or "")
+    return {
+        "years": years,
+        "value": value,
+        "apy": (value / years) if (value and years) else value,
+    }
 
 
 def _parse(html):
@@ -49,18 +70,11 @@ def _parse(html):
     summary = m.group(1).strip()
     if "contract" not in summary.lower():
         return None
-    value = _money(summary)
-    years = _years(summary)
     g = re.search(r"(\$[\d,.]+(?:\s*(?:thousand|million|billion))?\s+is guaranteed)",
                   text, re.I)
-    guaranteed = _money(g.group(1)) if g else None
-    return {
-        "text": summary,
-        "years": years,
-        "value": value,
-        "guaranteed": guaranteed,
-        "apy": (value / years) if (value and years) else value,
-    }
+    out = {"text": summary, "guaranteed": _money(g.group(1)) if g else None}
+    out.update(derive(summary))
+    return out
 
 
 def _fetch_one(otc_id, url):
@@ -91,4 +105,15 @@ def enrich_contracts(id_url_pairs, progress=None):
                 fetch.save_json_cache(_CACHE_NAME, cache)
 
     fetch.save_json_cache(_CACHE_NAME, cache)
-    return cache
+
+    # Re-derive numbers from each cached summary so parser fixes always apply
+    # (guaranteed stays as scraped -- it comes from the full page, not summary).
+    out = {}
+    for oid, info in cache.items():
+        if info and info.get("text"):
+            merged = dict(info)
+            merged.update(derive(info["text"]))
+            out[oid] = merged
+        else:
+            out[oid] = info
+    return out

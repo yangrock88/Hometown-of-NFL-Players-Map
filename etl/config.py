@@ -23,6 +23,7 @@ URL_PLAYERS = f"{NFLVERSE}/players/players.csv"
 URL_ROSTERS = f"{NFLVERSE}/weekly_rosters/roster_weekly_{SEASON}.csv"
 URL_DEPTH = f"{NFLVERSE}/depth_charts/depth_charts_{SEASON}.csv"
 URL_CONTRACTS = f"{NFLVERSE}/contracts/historical_contracts.csv.gz"
+URL_SEASON_ROSTER = NFLVERSE + "/rosters/roster_{season}.csv"  # historical, for rings
 
 # --- ESPN hidden athlete API (birthplace, jersey, etc.) ---------------------
 ESPN_ATHLETE = ("https://sports.core.api.espn.com/v2/sports/football/"

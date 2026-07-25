@@ -44,7 +44,7 @@ TEAMS = {
 # Historical / alternate abbreviations mapped onto the current franchise.
 ALIASES = {
     "OAK": "LV", "SD": "LAC", "STL": "LAR", "LA": "LAR",
-    "WSH": "WAS", "ARZ": "ARI", "BLT": "BAL", "CLV": "CLE",
+    "AZ": "ARI", "WSH": "WAS", "ARZ": "ARI", "BLT": "BAL", "CLV": "CLE",
     "HST": "HOU", "JAC": "JAX", "SL": "LAR", "GNB": "GB",
     "KAN": "KC", "NWE": "NE", "NOR": "NO", "SFO": "SF", "TAM": "TB",
 }

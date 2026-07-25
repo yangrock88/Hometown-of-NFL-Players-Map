@@ -74,7 +74,7 @@
   // ---- Filtering ---------------------------------------------------------
   var F = {
     q: "", teams: [], conf: "", states: [], posgroups: [], round: "",
-    startersOnly: false, firstOnly: false, topPaid: 0
+    startersOnly: false, firstOnly: false, champsOnly: false, topPaid: 0
   };
 
   function passes(p) {
@@ -87,6 +87,7 @@
     if (F.round && F.round !== "UDFA" && String(p.draft_round) !== F.round) return false;
     if (F.startersOnly && !p.starter) return false;
     if (F.firstOnly && !p.first_round) return false;
+    if (F.champsOnly && !(p.superbowls > 0)) return false;
     return true;
   }
 
@@ -156,6 +157,8 @@
         (p.draft_team ? " (" + p.draft_team + ")" : "") : "—");
 
     var badges = [];
+    if (p.superbowls > 0) badges.push('<span class="badge gold">' +
+      (p.superbowls > 1 ? p.superbowls + '\u00d7 ' : '') + 'Super Bowl Champion</span>');
     if (p.first_round) badges.push('<span class="badge gold">' + starSVG('#f08c00', 13) + ' 1st-Round Pick</span>');
     if (p.starter) badges.push('<span class="badge green">Projected Starter</span>');
     else if (p.depth_rank) badges.push('<span class="badge">Depth Rank ' + p.depth_rank + '</span>');
@@ -191,6 +194,8 @@
           cell("Depth Pos", p.depth_pos || p.position || "—") +
           cell("Avg / Year (APY)", money(p.apy)) +
           cell("Guaranteed", money(p.guaranteed)) +
+          cell("Super Bowls won", p.superbowls != null ? p.superbowls : 0) +
+          cell("Conference", p.conf || "—") +
         '</div>' +
         (p.espn_url ? '<a class="detail-link" target="_blank" rel="noopener" href="' +
           esc(p.espn_url) + '">View full ESPN profile ↗</a>' : "") +
@@ -277,14 +282,15 @@
     });
     bindChip("f-starters", function (on) { F.startersOnly = on; render(); });
     bindChip("f-first", function (on) { F.firstOnly = on; render(); });
+    bindChip("f-champs", function (on) { F.champsOnly = on; render(); });
 
     document.getElementById("f-reset").addEventListener("click", resetFilters);
     document.getElementById("f-fit").addEventListener("click", function () {
       map.setView([38.5, -96], 4);
     });
 
-    setText("meta-generated", "Updated " + (DATA.generated || "") +
-      " · " + PLAYERS.length.toLocaleString() + " mapped players");
+    setText("meta-generated", PLAYERS.length.toLocaleString() +
+      " players across all 32 teams");
   }
 
   function bindChip(id, cb) {
@@ -299,14 +305,14 @@
 
   function resetFilters() {
     F = { q: "", teams: [], conf: "", states: [], posgroups: [], round: "",
-          startersOnly: false, firstOnly: false, topPaid: 0 };
+          startersOnly: false, firstOnly: false, champsOnly: false, topPaid: 0 };
     ["f-team", "f-state", "f-posgroup"].forEach(resetMulti);
     document.getElementById("f-search").value = "";
     document.getElementById("f-conf").value = "";
     document.getElementById("f-round").value = "";
     document.getElementById("f-top").value = 0;
     document.getElementById("f-top-val").textContent = "Off";
-    ["f-starters", "f-first"].forEach(function (id) {
+    ["f-starters", "f-first", "f-champs"].forEach(function (id) {
       var el = document.getElementById(id);
       el.classList.remove("on"); el.querySelector("input").checked = false;
     });
@@ -320,7 +326,7 @@
       var div = L.DomUtil.create("div", "map-legend");
       div.innerHTML =
         '<div class="row">' + starSVG('#f08c00', 15) + ' 1st-round pick</div>' +
-        '<div class="row"><span class="dot" style="background:#1c7ed6"></span> Starter (bigger)</div>' +
+        '<div class="row"><span class="dot" style="background:#1c7ed6"></span> Starter (larger dot)</div>' +
         '<div class="row"><span class="dot" style="width:8px;height:8px;background:#1c7ed6"></span> Rotational / depth</div>' +
         '<div class="row" style="margin-top:4px;color:#868e96">Color = team · click for profile</div>';
       L.DomEvent.disableClickPropagation(div);

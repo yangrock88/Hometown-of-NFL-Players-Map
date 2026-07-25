@@ -9,10 +9,8 @@ import math
 import os
 import time
 
-from . import config, fetch, espn, geocode, otc
+from . import config, fetch, espn, geocode, otc, rings
 from .teams import TEAMS, canon
-
-EXCLUDE_STATUS = {"RET", "CUT", "TRT", "UDF"}
 
 
 def log(msg):
@@ -20,60 +18,36 @@ def log(msg):
 
 
 # --------------------------------------------------------------------------- #
-# Roster: pick each team's most recent *full* week, then dedupe players.
-# --------------------------------------------------------------------------- #
-def load_current_roster():
-    rows = fetch.download_csv(config.URL_ROSTERS, cache_name="roster.csv")
-    log(f"roster rows: {len(rows)}")
-
-    # (team, week) -> count, to find each team's latest well-populated week.
-    counts = {}
-    for r in rows:
-        wk = r.get("week")
-        tm = canon(r.get("team"))
-        if not (wk and wk.isdigit() and tm in TEAMS):
-            continue
-        counts[(tm, int(wk))] = counts.get((tm, int(wk)), 0) + 1
-
-    team_week = {}
-    for (tm, wk), c in counts.items():
-        if c >= 30 and wk > team_week.get(tm, -1):
-            team_week[tm] = wk
-    # fallback: if a team never hit 30 (weird), take its max week seen
-    for (tm, wk) in counts:
-        if tm not in team_week:
-            team_week[tm] = max(w for (t, w) in counts if t == tm)
-
-    log(f"teams resolved: {len(team_week)} (weeks "
-        f"{min(team_week.values())}-{max(team_week.values())})")
-
-    # Keep each player's most recent roster row (handles mid-season trades).
-    best = {}
-    for r in rows:
-        tm = canon(r.get("team"))
-        wk = r.get("week")
-        gid = r.get("gsis_id")
-        if not (gid and wk and wk.isdigit() and tm in TEAMS):
-            continue
-        if int(wk) != team_week.get(tm):
-            continue
-        if (r.get("status") or "").upper() in EXCLUDE_STATUS:
-            continue
-        prev = best.get(gid)
-        if prev is None or int(wk) > prev["_wk"]:
-            r["_wk"] = int(wk)
-            r["team"] = tm
-            best[gid] = r
-    log(f"current roster players: {len(best)}")
-    return best
-
-
-# --------------------------------------------------------------------------- #
-# Supporting feeds
+# Roster: nflverse players.csv is the authoritative *current* team assignment
+# (its latest_team reflects offseason signings/trades that weekly rosters miss).
+# We take active players from the most recent season present.
 # --------------------------------------------------------------------------- #
 def load_players_index():
     rows = fetch.download_csv(config.URL_PLAYERS, cache_name="players.csv")
     return {r["gsis_id"]: r for r in rows if r.get("gsis_id")}
+
+
+def load_current_roster(players):
+    active = [r for r in players.values()
+              if r.get("status") == "ACT" and (r.get("last_season") or "").isdigit()]
+    latest = max((int(r["last_season"]) for r in active), default=config.SEASON)
+
+    roster, per_team = {}, {}
+    for r in active:
+        if int(r["last_season"]) != latest:
+            continue
+        tm = canon(r.get("latest_team"))
+        gid = r.get("gsis_id")
+        if tm not in TEAMS or not gid:
+            continue
+        row = dict(r)
+        row["team"] = tm
+        roster[gid] = row
+        per_team[tm] = per_team.get(tm, 0) + 1
+    log(f"current roster ({latest}): {len(roster)} players across "
+        f"{len(per_team)} teams (per-team {min(per_team.values())}–"
+        f"{max(per_team.values())})")
+    return roster
 
 
 def load_starters():
@@ -199,13 +173,12 @@ def resolve_contract(otc_row, otc_live):
     }
 
 
-def build_records(roster, players, starters, contracts, birthplaces, geo, otc_data):
+def build_records(roster, starters, contracts, birthplaces, geo, otc_data, rings_map):
     records = []
     missing_geo = 0
     for gid, r in roster.items():
-        p = players.get(gid, {})
-        espn_id = r.get("espn_id") or p.get("espn_id") or ""
-        otc_id = p.get("otc_id") or ""
+        espn_id = r.get("espn_id") or ""
+        otc_id = r.get("otc_id") or ""
         team = r["team"]
         meta = TEAMS[team]
 
@@ -221,8 +194,9 @@ def build_records(roster, players, starters, contracts, birthplaces, geo, otc_da
             missing_geo += 1
 
         rank = starters.get(gid)
-        draft_round = to_int(p.get("draft_round"))
+        draft_round = to_int(r.get("draft_round"))
         c = resolve_contract(contracts.get(otc_id, {}), otc_data.get(otc_id))
+        rings_won = rings_map.get(gid, 0)
 
         hometown = None
         if city and state:
@@ -234,33 +208,34 @@ def build_records(roster, players, starters, contracts, birthplaces, geo, otc_da
 
         records.append({
             "id": gid,
-            "name": r.get("full_name") or p.get("display_name"),
+            "name": r.get("display_name"),
             "team": team,
             "team_name": meta["name"],
             "conf": meta["conf"],
             "div": f"{meta['conf']} {meta['div']}",
             "color": meta["primary"],
             "color2": meta["secondary"],
-            "position": r.get("position") or p.get("position"),
-            "pos_group": p.get("position_group") or r.get("ngs_position"),
+            "position": r.get("position"),
+            "pos_group": r.get("position_group") or r.get("ngs_position"),
             "jersey": to_int(r.get("jersey_number")) or bp.get("jersey"),
             "height": fmt_height(r.get("height")) or bp.get("displayHeight"),
             "weight": to_int(r.get("weight")),
-            "college": r.get("college") or p.get("college_name"),
-            "age": compute_age(r.get("birth_date") or p.get("birth_date")),
-            "exp": to_int(r.get("years_exp")),
-            "headshot": r.get("headshot_url") or p.get("headshot"),
+            "college": r.get("college_name"),
+            "age": compute_age(r.get("birth_date")),
+            "exp": to_int(r.get("years_of_experience")),
+            "headshot": r.get("headshot"),
             "espn_id": espn_id or None,
             "espn_url": config.ESPN_PROFILE.format(espn_id=espn_id) if espn_id else None,
-            "draft_year": to_int(p.get("draft_year")),
+            "draft_year": to_int(r.get("draft_year")),
             "draft_round": draft_round,
-            "draft_pick": to_int(p.get("draft_pick")),
-            "draft_team": canon(p.get("draft_team")) or None,
+            "draft_pick": to_int(r.get("draft_pick")),
+            "draft_team": canon(r.get("draft_team")) or None,
             "first_round": draft_round == 1,
-            "undrafted": draft_round is None and (p.get("draft_year") in (None, "", "NA")),
+            "undrafted": draft_round is None and (r.get("draft_year") in (None, "", "NA")),
             "starter": bool(rank and rank[0] == 1),
             "depth_rank": rank[0] if rank else None,
             "depth_pos": rank[1] if rank else None,
+            "superbowls": rings_won,
             "apy": c["apy"],
             "guaranteed": c["guaranteed"],
             "contract_value": c["value"],
@@ -305,27 +280,27 @@ def write_outputs(records):
 def main():
     t0 = time.time()
     log("== Hometown of NFL Players :: data build ==")
-    roster = load_current_roster()
     players = load_players_index()
+    roster = load_current_roster(players)
     starters = load_starters()
     contracts = load_contracts()
+    rings_map = rings.load_rings(progress=log)
 
-    espn_ids = {r.get("espn_id") or players.get(gid, {}).get("espn_id")
-                for gid, r in roster.items()}
+    espn_ids = {r.get("espn_id") for r in roster.values()}
     birthplaces = espn.enrich_birthplaces(espn_ids, progress=log)
 
     # Scrape each current player's live OTC contract page (cached).
     pairs = []
-    for gid in roster:
-        oid = players.get(gid, {}).get("otc_id")
+    for r in roster.values():
+        oid = r.get("otc_id")
         page = contracts.get(oid, {}).get("player_page") if oid else None
         if oid and page:
             pairs.append((oid, page))
     otc_data = otc.enrich_contracts(pairs, progress=log)
 
     geo = geocode.Geocoder()
-    records = build_records(roster, players, starters, contracts,
-                            birthplaces, geo, otc_data)
+    records = build_records(roster, starters, contracts,
+                            birthplaces, geo, otc_data, rings_map)
     geo.flush()
 
     jitter_duplicates(records)

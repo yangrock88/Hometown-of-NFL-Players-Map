@@ -11,6 +11,7 @@ data/cache/players.csv
 data/cache/depth.csv
 data/cache/contracts.csv
 data/cache/us_cities.csv
+data/cache/roster_*.csv
 
 # OS
 .DS_Store
