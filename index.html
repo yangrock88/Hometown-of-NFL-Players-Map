@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Hometown of NFL Players — Interactive Map</title>
+  <meta name="author" content="Rocky Yang" />
+  <meta name="description" content="Where every current NFL player calls home — an interactive hometown map of all 32 teams." />
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+        integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="" />
+  <link rel="stylesheet" href="assets/styles.css" />
+</head>
+<body>
+  <div id="app">
+    <aside id="sidebar">
+      <div class="brand">
+        <h1>Hometown of NFL Players</h1>
+        <p id="meta-generated">Loading current rosters…</p>
+      </div>
+
+      <div class="controls">
+        <div class="stats">
+          <div class="stat"><div class="n" id="st-count">0</div><div class="l">Players shown</div></div>
+          <div class="stat"><div class="n" id="st-starters">0</div><div class="l">Starters</div></div>
+          <div class="stat"><div class="n" id="st-first">0</div><div class="l">1st-Rounders</div></div>
+          <div class="stat"><div class="n" id="st-states">0</div><div class="l">Home states</div></div>
+          <div class="stat"><div class="n" id="st-apy">—</div><div class="l">Avg APY</div></div>
+          <div class="stat"><div class="n" id="st-age">—</div><div class="l">Avg age</div></div>
+        </div>
+
+        <div class="field">
+          <label for="f-search">Search player</label>
+          <input type="text" id="f-search" placeholder="e.g. Mahomes" autocomplete="off" />
+        </div>
+
+        <div class="field">
+          <label>Quick toggles</label>
+          <div class="toggles">
+            <label class="chip" id="f-starters"><input type="checkbox" />Starters only</label>
+            <label class="chip" id="f-first"><input type="checkbox" />1st-round only</label>
+          </div>
+        </div>
+
+        <div class="field">
+          <label for="f-conf">Conference</label>
+          <select id="f-conf">
+            <option value="">All conferences</option>
+            <option value="AFC">AFC</option>
+            <option value="NFC">NFC</option>
+          </select>
+        </div>
+
+        <div class="field">
+          <label for="f-round">Draft round</label>
+          <select id="f-round">
+            <option value="">Any round</option>
+            <option value="1">Round 1</option>
+            <option value="2">Round 2</option>
+            <option value="3">Round 3</option>
+            <option value="4">Round 4</option>
+            <option value="5">Round 5</option>
+            <option value="6">Round 6</option>
+            <option value="7">Round 7</option>
+            <option value="UDFA">Undrafted</option>
+          </select>
+        </div>
+
+        <div class="field">
+          <label for="f-top">Top performers by salary (APY)</label>
+          <div class="range-row">
+            <input type="range" id="f-top" min="0" max="200" step="10" value="0" />
+            <span class="range-val" id="f-top-val">Off</span>
+          </div>
+        </div>
+
+        <div class="field">
+          <label for="f-team">Team (ctrl/cmd-click for multi)</label>
+          <select id="f-team" multiple></select>
+        </div>
+
+        <div class="field">
+          <label for="f-posgroup">Position group</label>
+          <select id="f-posgroup" multiple></select>
+        </div>
+
+        <div class="field">
+          <label for="f-state">Home state</label>
+          <select id="f-state" multiple></select>
+        </div>
+
+        <div class="btn-row">
+          <button class="btn" id="f-fit">Reset view</button>
+          <button class="btn primary" id="f-reset">Clear filters</button>
+        </div>
+
+        <div class="legend-note">
+          <b>How to read it:</b> each marker is one player, placed at their
+          hometown and colored by team. Bigger dots are projected starters;
+          stars are 1st-round picks. Click any marker for the full profile.
+        </div>
+      </div>
+
+      <div class="foot">Built by Rocky Yang · Data: nflverse · ESPN · OverTheCap</div>
+    </aside>
+
+    <div id="map"></div>
+    <div id="detail"></div>
+  </div>
+
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
+          integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+  <script src="assets/data.js"></script>
+  <script src="assets/app.js"></script>
+</body>
+</html>

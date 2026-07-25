@@ -1,0 +1,17 @@
+# Python
+__pycache__/
+*.pyc
+.venv/
+venv/
+
+# Local build logs / large intermediate caches (keep geocode + birthplace caches)
+data/cache/*.log
+data/cache/roster.csv
+data/cache/players.csv
+data/cache/depth.csv
+data/cache/contracts.csv
+data/cache/us_cities.csv
+
+# OS
+.DS_Store
+Thumbs.db

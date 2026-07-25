@@ -1,0 +1,35 @@
+name: Refresh NFL data
+
+# Keeps the map's data current. Adjust the cron to whatever cadence you want.
+on:
+  schedule:
+    - cron: "0 12 * * 1"   # every Monday at 12:00 UTC
+  workflow_dispatch:        # ...or run it manually anytime
+
+permissions:
+  contents: write
+
+jobs:
+  refresh:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Rebuild dataset
+        run: python update_data.py
+
+      - name: Commit refreshed data
+        run: |
+          git config user.name "data-bot"
+          git config user.email "data-bot@users.noreply.github.com"
+          git add assets/data.js data/players.json data/cache/geocode.json data/cache/espn_birthplace.json
+          if git diff --staged --quiet; then
+            echo "No data changes."
+          else
+            git commit -m "chore: refresh NFL data ($(date -u +%Y-%m-%d))"
+            git push
+          fi
