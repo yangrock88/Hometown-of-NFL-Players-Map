@@ -12,6 +12,11 @@
 </head>
 <body>
   <div id="app">
+    <button id="menu-toggle" aria-label="Open filters">
+      <svg width="16" height="16" viewBox="0 0 24 24" aria-hidden="true">
+        <path d="M3 6h18M3 12h18M3 18h18" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+      </svg>Filters
+    </button>
     <aside id="sidebar">
       <div class="brand">
         <h1>Hometown of NFL Players</h1>
@@ -19,6 +24,7 @@
       </div>
 
       <div class="controls">
+        <button class="btn primary mobile-only" id="f-apply">Show map</button>
         <div class="stats">
           <div class="stat"><div class="n" id="st-count">0</div><div class="l">Players shown</div></div>
           <div class="stat"><div class="n" id="st-starters">0</div><div class="l">Starters</div></div>
@@ -105,6 +111,7 @@
     </aside>
 
     <div id="map"></div>
+    <div id="scrim"></div>
     <div id="detail"></div>
   </div>
 

@@ -9,9 +9,9 @@
   var TEAMS = DATA.teams;
 
   // ---- Map ---------------------------------------------------------------
-  var map = L.map("map", { zoomControl: true, minZoom: 3, worldCopyJump: true })
+  var map = L.map("map", { zoomControl: false, minZoom: 3, worldCopyJump: true })
     .setView([38.5, -96], 4);
-  L.control.zoom({ position: "topright" });
+  L.control.zoom({ position: "topright" }).addTo(map);
 
   // CARTO "Positron" light basemap -- clean Tableau/Carto style, high legibility.
   L.tileLayer(
@@ -203,6 +203,7 @@
 
     detail.querySelector(".detail-close").onclick = closeDetail;
     detail.classList.add("open");
+    if (window._closeDrawer) window._closeDrawer();  // free the map on mobile
     map.panTo([p.lat, p.lng], { animate: true });
   }
   function cell(l, v) {
@@ -288,6 +289,23 @@
     document.getElementById("f-fit").addEventListener("click", function () {
       map.setView([38.5, -96], 4);
     });
+
+    // Mobile drawer: hamburger opens the filter sidebar; scrim/apply closes it.
+    var sidebar = document.getElementById("sidebar");
+    var scrim = document.getElementById("scrim");
+    function setDrawer(open) {
+      sidebar.classList.toggle("open", open);
+      if (scrim) scrim.classList.toggle("show", open);
+    }
+    var toggle = document.getElementById("menu-toggle");
+    if (toggle) toggle.addEventListener("click", function () {
+      setDrawer(!sidebar.classList.contains("open"));
+    });
+    if (scrim) scrim.addEventListener("click", function () { setDrawer(false); });
+    document.getElementById("f-apply").addEventListener("click", function () {
+      setDrawer(false);
+    });
+    window._closeDrawer = function () { setDrawer(false); };
 
     setText("meta-generated", PLAYERS.length.toLocaleString() +
       " players across all 32 teams");

@@ -180,8 +180,35 @@ body {
 }
 .detail-link:hover { background: #1971c2; }
 
+/* Mobile drawer controls (hidden on desktop) */
+#menu-toggle {
+  display: none; position: fixed; top: 12px; left: 12px; z-index: 1450;
+  align-items: center; gap: 7px; background: var(--panel); color: var(--ink);
+  border: 1px solid var(--line); border-radius: 10px; padding: 9px 13px;
+  font-size: 13px; font-weight: 700; box-shadow: var(--shadow); cursor: pointer;
+}
+#menu-toggle svg { display: block; }
+#scrim { display: none; }
+.mobile-only { display: none; }
+
 @media (max-width: 820px) {
   #app { grid-template-columns: 1fr; }
-  #sidebar { position: absolute; z-index: 1300; width: 300px; height: 100vh; }
+  #menu-toggle { display: inline-flex; }
+  .mobile-only { display: block; margin: 8px 0 4px; }
+
+  #sidebar {
+    position: fixed; top: 0; left: 0; z-index: 1400;
+    width: 86vw; max-width: 340px; height: 100vh;
+    transform: translateX(-100%); transition: transform .26s ease;
+    box-shadow: var(--shadow);
+  }
+  #sidebar.open { transform: none; }
+
+  #scrim {
+    position: fixed; inset: 0; z-index: 1350;
+    background: rgba(20, 22, 28, .45);
+  }
+  #scrim.show { display: block; }
+
   #detail { width: 100%; }
 }
