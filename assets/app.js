@@ -157,12 +157,12 @@
         (p.draft_team ? " (" + p.draft_team + ")" : "") : "—");
 
     var badges = [];
-    if (p.superbowls > 0) badges.push('<span class="badge gold">' +
-      (p.superbowls > 1 ? p.superbowls + '\u00d7 ' : '') + 'Super Bowl Champion</span>');
-    if (p.first_round) badges.push('<span class="badge gold">' + starSVG('#f08c00', 13) + ' 1st-Round Pick</span>');
-    if (p.starter) badges.push('<span class="badge green">Projected Starter</span>');
-    else if (p.depth_rank) badges.push('<span class="badge">Depth Rank ' + p.depth_rank + '</span>');
-    if (p.undrafted) badges.push('<span class="badge">Undrafted Gem</span>');
+    if (p.superbowls > 0) badges.push('<span class="badge amber">' +
+      (p.superbowls > 1 ? p.superbowls + '\u00d7 ' : '') + 'Super Bowl champion</span>');
+    if (p.first_round) badges.push('<span class="badge blue">1st-round pick</span>');
+    if (p.starter) badges.push('<span class="badge green">Projected starter</span>');
+    else if (p.depth_rank) badges.push('<span class="badge neutral">Depth rank ' + p.depth_rank + '</span>');
+    if (p.undrafted) badges.push('<span class="badge neutral">Undrafted</span>');
 
     var img = p.headshot
       ? '<img src="' + esc(p.headshot) + '" alt="" onerror="this.style.visibility=\'hidden\'">'

@@ -138,8 +138,9 @@ body {
 .detail-name { font-size: 20px; font-weight: 800; line-height: 1.15; }
 .detail-sub { font-size: 12.5px; color: var(--ink-dim); margin-top: 3px; }
 .pill {
-  display: inline-block; margin-top: 8px; padding: 3px 10px; border-radius: 999px;
-  font-size: 11px; font-weight: 700; color: #fff;
+  display: inline-block; margin-top: 9px; padding: 3px 9px; border-radius: 7px;
+  font-size: 10px; font-weight: 700; letter-spacing: .05em; text-transform: uppercase;
+  color: #fff;
 }
 
 .detail-body { padding: 6px 18px 20px; overflow-y: auto; }
@@ -157,10 +158,21 @@ body {
 .kv .cell { background: var(--panel-2); border: 1px solid var(--line); border-radius: 10px; padding: 8px 10px; }
 .kv .cell .l { font-size: 9.5px; text-transform: uppercase; letter-spacing: .1em; color: var(--ink-faint); }
 .kv .cell .v { font-size: 14px; font-weight: 700; margin-top: 2px; }
-.badge-row { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 12px; }
-.badge { display: inline-flex; align-items: center; gap: 4px; font-size: 11px; padding: 4px 9px; border-radius: 8px; background: var(--panel-2); border: 1px solid var(--line); color: var(--ink-dim); }
-.badge.gold { color: #b06e00; border-color: rgba(240, 140, 0, .4); background: #fff9db; }
-.badge.green { color: var(--green); border-color: rgba(47, 158, 68, .35); background: #ebfbee; }
+.badge-row { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 14px; }
+.badge {
+  display: inline-flex; align-items: center; gap: 6px;
+  font-size: 11.5px; font-weight: 600; letter-spacing: .01em;
+  padding: 4px 10px 4px 8px; border-radius: 7px;
+  background: #ffffff; border: 1px solid var(--line-2); color: var(--ink);
+}
+.badge::before {
+  content: ""; width: 6px; height: 6px; border-radius: 50%;
+  background: var(--ink-faint); flex: none;
+}
+.badge.amber::before { background: #f59f00; }
+.badge.green::before { background: #37b24d; }
+.badge.blue::before  { background: #1c7ed6; }
+.badge.neutral::before { background: #adb5bd; }
 .detail-link {
   display: block; text-align: center; margin-top: 16px; text-decoration: none;
   background: var(--accent); color: #fff; font-weight: 700;
