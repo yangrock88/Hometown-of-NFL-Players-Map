@@ -184,14 +184,18 @@ def build_records(roster, starters, contracts, birthplaces, geo, otc_data, rings
 
         bp = birthplaces.get(str(espn_id)) or {}
         city = bp.get("city")
-        state = bp.get("state")
+        raw_state = bp.get("state")
         country = bp.get("country") or "USA"
-        geo_res = geo.geocode(city, state, country) if (city or state) else None
+        geo_res = geo.geocode(city, raw_state, country) if (city or raw_state or country) else None
         if geo_res:
             lat, lng, prec = geo_res
         else:
             lat = lng = prec = None
             missing_geo += 1
+
+        # For players born outside the US, show their country in place of state.
+        intl = bool(country) and country.upper() not in ("USA", "US", "UNITED STATES")
+        state = country if intl else raw_state
 
         rank = starters.get(gid)
         draft_round = to_int(r.get("draft_round"))
@@ -213,7 +217,7 @@ def build_records(roster, starters, contracts, birthplaces, geo, otc_data, rings
             "team_name": meta["name"],
             "conf": meta["conf"],
             "div": f"{meta['conf']} {meta['div']}",
-            "color": meta["primary"],
+            "color": meta.get("map_color", meta["primary"]),
             "color2": meta["secondary"],
             "position": r.get("position"),
             "pos_group": r.get("position_group") or r.get("ngs_position"),
