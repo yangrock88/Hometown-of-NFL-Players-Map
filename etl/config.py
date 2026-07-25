@@ -39,5 +39,6 @@ USER_AGENT = "hometown-nfl-map/1.0 (Rocky Yang; personal portfolio project)"
 # Roster statuses we treat as "currently on the roster".
 ACTIVE_STATUSES = {"ACT", "RES", "PUP", "NON", "EXE", "DEV", "RSN"}
 
-# How many ESPN birthplace lookups to run in parallel.
+# How many lookups to run in parallel.
 ESPN_WORKERS = 10
+OTC_WORKERS = 6  # OverTheCap current-contract scrapes

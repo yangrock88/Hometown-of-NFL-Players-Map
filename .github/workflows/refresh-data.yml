@@ -26,7 +26,7 @@ jobs:
         run: |
           git config user.name "data-bot"
           git config user.email "data-bot@users.noreply.github.com"
-          git add assets/data.js data/players.json data/cache/geocode.json data/cache/espn_birthplace.json
+          git add assets/data.js data/players.json data/cache/geocode.json data/cache/espn_birthplace.json data/cache/otc_contracts.json
           if git diff --staged --quiet; then
             echo "No data changes."
           else

@@ -13,9 +13,9 @@
     .setView([38.5, -96], 4);
   L.control.zoom({ position: "topright" });
 
-  // Carto "dark matter" basemap -- the Tableau/Carto style you like.
+  // CARTO "Positron" light basemap -- clean Tableau/Carto style, high legibility.
   L.tileLayer(
-    "https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png",
+    "https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png",
     {
       subdomains: "abcd", maxZoom: 19,
       attribution: 'Basemap &copy; <a href="https://carto.com/">CARTO</a> · ' +
@@ -42,10 +42,11 @@
     var s = ["th", "st", "nd", "rd"], v = n % 100;
     return n + (s[(v - 20) % 10] || s[v] || s[0]);
   }
-  function starSVG(color) {
-    return '<svg width="20" height="20" viewBox="0 0 24 24">' +
+  function starSVG(color, size) {
+    var s = size || 20;
+    return '<svg width="' + s + '" height="' + s + '" viewBox="0 0 24 24">' +
       '<path d="M12 2l2.9 6.3 6.9.7-5.1 4.6 1.4 6.8L12 17.8 5.9 20.4l1.4-6.8L2.2 9l6.9-.7z" ' +
-      'fill="' + color + '" stroke="#fff" stroke-width="1.2"/></svg>';
+      'fill="' + color + '" stroke="#343a40" stroke-width="1.1"/></svg>';
   }
 
   // ---- Marker rendering --------------------------------------------------
@@ -61,8 +62,8 @@
     } else {
       var r = p.starter ? 6 : 4.5;
       m = L.circleMarker([p.lat, p.lng], {
-        radius: r, fillColor: p.color, color: "#fff",
-        weight: p.starter ? 1.6 : 0.8, opacity: 0.9, fillOpacity: 0.85
+        radius: r, fillColor: p.color, color: "#343a40",
+        weight: p.starter ? 1.4 : 0.8, opacity: 0.65, fillOpacity: 0.9
       });
     }
     m.on("click", function () { openDetail(p); });
@@ -130,16 +131,32 @@
 
   // ---- Detail panel ------------------------------------------------------
   var detail = document.getElementById("detail");
+  function contractCard(p) {
+    if (!p.contract_value && !p.contract_text) {
+      return '<div class="contract-card"><div class="l">Current contract</div>' +
+        '<div class="v">Not available</div>' +
+        '<div class="sub">No contract on record (rookie / practice squad / futures deal).</div></div>';
+    }
+    var yrs = p.contract_years ? p.contract_years + (p.contract_years === 1 ? " yr" : " yrs") : "";
+    var headline = [yrs, money(p.contract_value)].filter(Boolean).join(" · ");
+    var sub = p.contract_text
+      ? (p.contract_text.charAt(0).toUpperCase() + p.contract_text.slice(1))
+      : ("Avg / year " + money(p.apy) +
+         (p.guaranteed ? " · " + money(p.guaranteed) + " guaranteed" : ""));
+    var tag = p.contract_source === "current" ? "Current contract (OverTheCap)"
+            : "Latest contract on record";
+    return '<div class="contract-card"><div class="l">Current contract</div>' +
+      '<div class="v">' + esc(headline || "—") + '</div>' +
+      '<div class="sub">' + esc(sub) + '</div>' +
+      '<div class="tag">' + esc(tag) + '</div></div>';
+  }
   function openDetail(p) {
-    var contract = p.contract_value
-      ? money(p.contract_value) + (p.contract_years ? " / " + p.contract_years + " yrs" : "")
-      : "—";
     var draft = p.undrafted ? "Undrafted" :
       (p.draft_year ? p.draft_year + " · Rd " + p.draft_round + ", #" + p.draft_pick +
         (p.draft_team ? " (" + p.draft_team + ")" : "") : "—");
 
     var badges = [];
-    if (p.first_round) badges.push('<span class="badge gold">' + starSVG('#ffb020') + ' 1st-Round Pick</span>');
+    if (p.first_round) badges.push('<span class="badge gold">' + starSVG('#f08c00', 13) + ' 1st-Round Pick</span>');
     if (p.starter) badges.push('<span class="badge green">Projected Starter</span>');
     else if (p.depth_rank) badges.push('<span class="badge">Depth Rank ' + p.depth_rank + '</span>');
     if (p.undrafted) badges.push('<span class="badge">Undrafted Gem</span>');
@@ -150,8 +167,7 @@
 
     detail.innerHTML =
       '<div class="detail-hero">' +
-        '<div class="accent" style="background:radial-gradient(circle at 30% 20%,' +
-          esc(p.color) + ',transparent 70%)"></div>' +
+        '<div class="teambar" style="background:' + esc(p.color) + '"></div>' +
         '<button class="detail-close" aria-label="Close">×</button>' +
         '<div class="detail-top">' + img +
           '<div><div class="detail-name">' + esc(p.name) + '</div>' +
@@ -163,6 +179,7 @@
         '<div class="badge-row">' + badges.join("") + '</div>' +
       '</div>' +
       '<div class="detail-body">' +
+        contractCard(p) +
         '<div class="kv">' +
           cell("Hometown", p.hometown || "—") +
           cell("College", p.college || "—") +
@@ -174,8 +191,6 @@
           cell("Depth Pos", p.depth_pos || p.position || "—") +
           cell("Avg / Year (APY)", money(p.apy)) +
           cell("Guaranteed", money(p.guaranteed)) +
-          cell("Contract", contract) +
-          cell("Cap %", p.apy_cap_pct != null ? (p.apy_cap_pct * 100).toFixed(1) + "%" : "—") +
         '</div>' +
         (p.espn_url ? '<a class="detail-link" target="_blank" rel="noopener" href="' +
           esc(p.espn_url) + '">View full ESPN profile ↗</a>' : "") +
@@ -196,35 +211,58 @@
       .filter(Boolean))).sort();
   }
 
-  function fillSelect(id, values, labeler) {
+  var ALL = "__ALL__";
+  function selectOnly(sel, values) {
+    Array.from(sel.options).forEach(function (o) {
+      o.selected = values.indexOf(o.value) !== -1;
+    });
+  }
+  // A multi-select with a sticky "All" row at the top. Choosing "All" clears
+  // specifics; choosing a specific clears "All". Empty state falls back to All.
+  function setupMulti(id, key, allLabel, values, labeler) {
     var sel = document.getElementById(id);
+    var allOpt = document.createElement("option");
+    allOpt.value = ALL; allOpt.textContent = allLabel; allOpt.selected = true;
+    sel.appendChild(allOpt);
     values.forEach(function (v) {
       var o = document.createElement("option");
       o.value = v; o.textContent = labeler ? labeler(v) : v;
       sel.appendChild(o);
     });
+    sel._prev = [ALL];
+    sel.addEventListener("change", function () {
+      var vals = Array.from(sel.selectedOptions).map(function (o) { return o.value; });
+      var prev = sel._prev || [];
+      var added = vals.filter(function (v) { return prev.indexOf(v) === -1; });
+      if (added.indexOf(ALL) !== -1) {
+        vals = [ALL];
+      } else if (added.length) {
+        vals = vals.filter(function (v) { return v !== ALL; });
+      } else {
+        vals = vals.filter(function (v) { return v !== ALL; });
+        if (!vals.length) vals = [ALL];
+      }
+      selectOnly(sel, vals);
+      sel._prev = vals.slice();
+      F[key] = (vals.length === 1 && vals[0] === ALL) ? [] : vals;
+      render();
+    });
   }
-  function selectedValues(sel) {
-    return Array.from(sel.selectedOptions).map(function (o) { return o.value; });
+  function resetMulti(id) {
+    var sel = document.getElementById(id);
+    selectOnly(sel, [ALL]);
+    sel._prev = [ALL];
   }
 
   function initControls() {
     var teamCodes = Object.keys(TEAMS).sort();
-    fillSelect("f-team", teamCodes, function (t) { return TEAMS[t].name; });
-    fillSelect("f-state", uniqueSorted("home_state"));
-    fillSelect("f-posgroup", uniqueSorted("pos_group"));
+    setupMulti("f-team", "teams", "All teams", teamCodes,
+      function (t) { return TEAMS[t].name; });
+    setupMulti("f-posgroup", "posgroups", "All positions", uniqueSorted("pos_group"));
+    setupMulti("f-state", "states", "All states", uniqueSorted("home_state"));
 
     document.getElementById("f-search").addEventListener("input", function (e) {
       F.q = e.target.value.trim().toLowerCase(); render();
-    });
-    document.getElementById("f-team").addEventListener("change", function (e) {
-      F.teams = selectedValues(e.target); render();
-    });
-    document.getElementById("f-state").addEventListener("change", function (e) {
-      F.states = selectedValues(e.target); render();
-    });
-    document.getElementById("f-posgroup").addEventListener("change", function (e) {
-      F.posgroups = selectedValues(e.target); render();
     });
     document.getElementById("f-conf").addEventListener("change", function (e) {
       F.conf = e.target.value; render();
@@ -262,10 +300,7 @@
   function resetFilters() {
     F = { q: "", teams: [], conf: "", states: [], posgroups: [], round: "",
           startersOnly: false, firstOnly: false, topPaid: 0 };
-    ["f-team", "f-state", "f-posgroup"].forEach(function (id) {
-      var s = document.getElementById(id);
-      Array.from(s.options).forEach(function (o) { o.selected = false; });
-    });
+    ["f-team", "f-state", "f-posgroup"].forEach(resetMulti);
     document.getElementById("f-search").value = "";
     document.getElementById("f-conf").value = "";
     document.getElementById("f-round").value = "";
@@ -284,10 +319,10 @@
     legend.onAdd = function () {
       var div = L.DomUtil.create("div", "map-legend");
       div.innerHTML =
-        '<div class="row">' + starSVG('#ffb020') + ' 1st-round pick</div>' +
-        '<div class="row"><span class="dot" style="background:#8b5cf6"></span> Starter (bigger)</div>' +
-        '<div class="row"><span class="dot" style="width:8px;height:8px;background:#8b5cf6"></span> Rotational / depth</div>' +
-        '<div class="row" style="margin-top:4px;color:#a89fce">Color = team · click for profile</div>';
+        '<div class="row">' + starSVG('#f08c00', 15) + ' 1st-round pick</div>' +
+        '<div class="row"><span class="dot" style="background:#1c7ed6"></span> Starter (bigger)</div>' +
+        '<div class="row"><span class="dot" style="width:8px;height:8px;background:#1c7ed6"></span> Rotational / depth</div>' +
+        '<div class="row" style="margin-top:4px;color:#868e96">Color = team · click for profile</div>';
       L.DomEvent.disableClickPropagation(div);
       return div;
     };

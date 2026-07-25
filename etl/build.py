@@ -9,7 +9,7 @@ import math
 import os
 import time
 
-from . import config, fetch, espn, geocode
+from . import config, fetch, espn, geocode, otc
 from .teams import TEAMS, canon
 
 EXCLUDE_STATUS = {"RET", "CUT", "TRT", "UDF"}
@@ -174,7 +174,32 @@ def jitter_duplicates(records):
 # --------------------------------------------------------------------------- #
 # Assemble
 # --------------------------------------------------------------------------- #
-def build_records(roster, players, starters, contracts, birthplaces, geo):
+def resolve_contract(otc_row, otc_live):
+    """Prefer the scraped *current* OTC deal; fall back to the nflverse feed."""
+    if otc_live and otc_live.get("value"):
+        val = to_float(otc_live.get("value"))
+        yrs = to_int(otc_live.get("years"))
+        return {
+            "value": val,
+            "years": yrs,
+            "apy": to_float(otc_live.get("apy")) or (val / yrs if (val and yrs) else val),
+            "guaranteed": to_float(otc_live.get("guaranteed")),
+            "apy_cap_pct": None,
+            "text": otc_live.get("text"),
+            "source": "current",
+        }
+    return {
+        "value": to_float(otc_row.get("value")),
+        "years": to_int(otc_row.get("years")),
+        "apy": to_float(otc_row.get("apy")),
+        "guaranteed": to_float(otc_row.get("guaranteed")),
+        "apy_cap_pct": to_float(otc_row.get("apy_cap_pct")),
+        "text": None,
+        "source": "historical" if otc_row else None,
+    }
+
+
+def build_records(roster, players, starters, contracts, birthplaces, geo, otc_data):
     records = []
     missing_geo = 0
     for gid, r in roster.items():
@@ -197,7 +222,7 @@ def build_records(roster, players, starters, contracts, birthplaces, geo):
 
         rank = starters.get(gid)
         draft_round = to_int(p.get("draft_round"))
-        c = contracts.get(otc_id, {})
+        c = resolve_contract(contracts.get(otc_id, {}), otc_data.get(otc_id))
 
         hometown = None
         if city and state:
@@ -236,11 +261,13 @@ def build_records(roster, players, starters, contracts, birthplaces, geo):
             "starter": bool(rank and rank[0] == 1),
             "depth_rank": rank[0] if rank else None,
             "depth_pos": rank[1] if rank else None,
-            "apy": to_float(c.get("apy")),
-            "guaranteed": to_float(c.get("guaranteed")),
-            "contract_value": to_float(c.get("value")),
-            "contract_years": to_int(c.get("years")),
-            "apy_cap_pct": to_float(c.get("apy_cap_pct")),
+            "apy": c["apy"],
+            "guaranteed": c["guaranteed"],
+            "contract_value": c["value"],
+            "contract_years": c["years"],
+            "contract_text": c["text"],
+            "contract_source": c["source"],
+            "apy_cap_pct": c["apy_cap_pct"],
             "hometown": hometown,
             "home_city": city,
             "home_state": state,
@@ -287,8 +314,18 @@ def main():
                 for gid, r in roster.items()}
     birthplaces = espn.enrich_birthplaces(espn_ids, progress=log)
 
+    # Scrape each current player's live OTC contract page (cached).
+    pairs = []
+    for gid in roster:
+        oid = players.get(gid, {}).get("otc_id")
+        page = contracts.get(oid, {}).get("player_page") if oid else None
+        if oid and page:
+            pairs.append((oid, page))
+    otc_data = otc.enrich_contracts(pairs, progress=log)
+
     geo = geocode.Geocoder()
-    records = build_records(roster, players, starters, contracts, birthplaces, geo)
+    records = build_records(roster, players, starters, contracts,
+                            birthplaces, geo, otc_data)
     geo.flush()
 
     jitter_duplicates(records)

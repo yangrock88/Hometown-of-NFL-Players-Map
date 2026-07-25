@@ -21,12 +21,13 @@ The map was shaped around a few real user questions ("jobs to be done"):
 | *Who are the difference-makers?* | Projected **starters** render larger; **1st-round picks** show as stars. |
 | *Which players matter to my team?* | Markers are **team-colored**; filter to one or many teams. |
 | *Who's the local kid?* | Filter by **home state**. |
-| *Where's the money?* | "Top performers by salary (APY)" slider + salary on every profile. |
+| *Where's the money?* | "Top Salary" slider + each player's **current contract** on their profile. |
 | *Slice any way I want* | Combine filters: conference, draft round, position group, starters. |
 
-Visual language: a dark neon analytics palette (navy canvas; magenta / purple /
-cyan / amber accents) over a CARTO dark-matter basemap, so bright team colors
-and stars pop without competing with map labels.
+Visual language: a clean **light** theme built on the accessible, open-source
+[Open Color](https://yeun.github.io/open-color/) palette over a CARTO Positron
+basemap. Flat, solid colors (no gradients) keep team colors and labels highly
+legible.
 
 ---
 
@@ -35,7 +36,9 @@ and stars pop without competing with map labels.
 All data is public and refreshed by `update_data.py`:
 
 - **[nflverse](https://github.com/nflverse/nflverse)** — current rosters, positions,
-  headshots, draft history, depth charts (starter status), and OverTheCap contracts.
+  headshots, draft history, depth charts (starter status), and historical contracts.
+- **OverTheCap player pages** — each player's *current* contract (years, total
+  value, guaranteed), since the historical feed misses veteran one-year deals.
 - **ESPN athlete API** — player birthplaces (hometowns).
 - **OpenStreetMap / offline US-cities table** — geocoding hometown → lat/lng.
 
@@ -78,6 +81,7 @@ etl/
   fetch.py            # cached HTTP + CSV helpers
   teams.py            # team colors / divisions
   espn.py             # birthplace lookups (threaded, cached)
+  otc.py              # current-contract scraper (threaded, cached)
   geocode.py          # offline + Nominatim geocoding
   build.py            # orchestration -> data.js
 update_data.py        # entry point
