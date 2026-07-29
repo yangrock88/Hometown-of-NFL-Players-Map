@@ -186,15 +186,21 @@ def build_records(roster, starters, contracts, birthplaces, geo, otc_data, rings
         city = bp.get("city")
         raw_state = bp.get("state")
         country = bp.get("country") or "USA"
-        geo_res = geo.geocode(city, raw_state, country) if (city or raw_state or country) else None
+
+        # Detect international before geocoding so we can skip province codes.
+        # ESPN uses non-standard province codes (e.g. 'PQ' for Quebec) that
+        # confuse Nominatim into returning wrong countries. For intl players,
+        # geocode with just city + country for a clean, unambiguous query.
+        intl = bool(country) and country.upper() not in ("USA", "US", "UNITED STATES")
+        geo_state = None if intl else raw_state
+        geo_res = geo.geocode(city, geo_state, country) if (city or country) else None
         if geo_res:
             lat, lng, prec = geo_res
         else:
             lat = lng = prec = None
             missing_geo += 1
 
-        # For players born outside the US, show their country in place of state.
-        intl = bool(country) and country.upper() not in ("USA", "US", "UNITED STATES")
+        # For display and filtering: use country as the 'state' for intl players.
         state = country if intl else raw_state
 
         rank = starters.get(gid)
