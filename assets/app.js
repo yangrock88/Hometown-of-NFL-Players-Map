@@ -9,8 +9,11 @@
   var TEAMS = DATA.teams;
 
   // ---- Map ---------------------------------------------------------------
-  var map = L.map("map", { zoomControl: false, minZoom: 3, worldCopyJump: true })
-    .setView([38.5, -96], 4);
+  // preferCanvas: ~1,700 circleMarkers as individual SVG DOM nodes is slow
+  // on filter re-renders; the Canvas renderer draws them all in one pass.
+  var map = L.map("map", {
+    zoomControl: false, minZoom: 3, worldCopyJump: true, preferCanvas: true
+  }).setView([38.5, -96], 4);
   L.control.zoom({ position: "topright" }).addTo(map);
 
   // CARTO "Positron" light basemap -- clean Tableau/Carto style, high legibility.
@@ -267,8 +270,12 @@
     setupMulti("f-posgroup", "posgroups", "All positions", uniqueSorted("pos_group"));
     setupMulti("f-state", "states", "All states", uniqueSorted("home_state"));
 
+    // Debounce search so each keystroke doesn't rebuild 1,700 markers.
+    var searchTimer = null;
     document.getElementById("f-search").addEventListener("input", function (e) {
-      F.q = e.target.value.trim().toLowerCase(); render();
+      var q = e.target.value.trim().toLowerCase();
+      clearTimeout(searchTimer);
+      searchTimer = setTimeout(function () { F.q = q; render(); }, 150);
     });
     document.getElementById("f-conf").addEventListener("change", function (e) {
       F.conf = e.target.value; render();
